@@ -5,7 +5,7 @@ import os
 
 app = Flask(__name__)
 
-DATA_FILE = "pm_data.csv"
+DATA_FILE = "/opt/render/project/src/pm_data.csv"
 
 # Ensure CSV file exists with headers
 if not os.path.exists(DATA_FILE):
