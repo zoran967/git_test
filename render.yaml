@@ -2,6 +2,5 @@ services:
   - type: web
     name: apm2-meteo
     env: python
-    region: frankfurt
     buildCommand: "pip install -r requirements.txt"
-    startCommand: "gunicorn app:app"
+    startCommand: "gunicorn server:app"
