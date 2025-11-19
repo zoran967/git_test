@@ -1,72 +1,57 @@
 from flask import Flask, request, render_template_string
 import datetime
+import csv
+import os
 
 app = Flask(__name__)
 
-# In-memory storage for APM-2 data
-data_storage = []
+DATA_FILE = "pm_data.csv"
 
-# HTML template to display PM data in a table
-HTML_TEMPLATE = """
-<!DOCTYPE html>
-<html>
-<head>
-    <title>APM-2 PM Data</title>
-    <style>
-        table { border-collapse: collapse; width: 60%; margin: 20px auto; }
-        th, td { border: 1px solid #333; padding: 8px; text-align: center; }
-        th { background-color: #f2f2f2; }
-    </style>
-</head>
-<body>
-    <h2 style="text-align:center;">APM-2 Sensor PM Data</h2>
-    <table>
-        <tr>
-            <th>Timestamp (UTC)</th>
-            <th>PM2.5 (µg/m³)</th>
-            <th>PM10 (µg/m³)</th>
-        </tr>
-        {% for item in data %}
-        <tr>
-            <td>{{ item.timestamp }}</td>
-            <td>{{ item.pm25 or '-' }}</td>
-            <td>{{ item.pm10 or '-' }}</td>
-        </tr>
-        {% endfor %}
-    </table>
-</body>
-</html>
-"""
+# Ensure CSV file exists with headers
+if not os.path.exists(DATA_FILE):
+    with open(DATA_FILE, "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["timestamp", "pm2.5", "pm10"])
 
 @app.route("/apm2", methods=["POST"])
 def receive_data():
-    # Expect data as key=value pairs separated by &
-    raw_data = request.get_data(as_text=True)
-    
-    # Convert to dictionary
-    data_dict = {}
-    for pair in raw_data.split("&"):
-        if "=" in pair:
-            key, value = pair.split("=")
-            data_dict[key.strip()] = value.strip()
-    
-    # Keep only PM2.5 and PM10
-    pm_data = {
-        "timestamp": datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
-        "pm25": data_dict.get("pm2.5"),
-        "pm10": data_dict.get("pm10")
-    }
-    
-    # Store in memory
-    data_storage.append(pm_data)
-    
-    print(f"Received: {pm_data}")
+    pm25 = request.form.get("pm2.5")
+    pm10 = request.form.get("pm10")
+    timestamp = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+
+    with open(DATA_FILE, "a", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow([timestamp, pm25, pm10])
+
+    print(f"Received PM2.5={pm25} PM10={pm10}")
     return "OK", 200
 
 @app.route("/data")
-def view_data():
-    return render_template_string(HTML_TEMPLATE, data=data_storage)
+def show_data():
+    rows = []
+    if os.path.exists(DATA_FILE):
+        with open(DATA_FILE, newline="") as f:
+            reader = csv.reader(f)
+            rows = list(reader)
+
+    table_html = """
+    <table border="1" cellpadding="5">
+        <tr>
+            <th>Timestamp (UTC)</th>
+            <th>PM2.5</th>
+            <th>PM10</th>
+        </tr>
+        {% for row in rows[1:] %}
+        <tr>
+            <td>{{ row[0] }}</td>
+            <td>{{ row[1] }}</td>
+            <td>{{ row[2] }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    """
+    return render_template_string(table_html, rows=rows)
 
 @app.route("/")
 def home():
-    return "APM-2 Data Receiver is running! Visit /data to see PM2.5 and PM10 table."
+    return "APM-2 Data Receiver is running!"
