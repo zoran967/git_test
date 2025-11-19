@@ -5,53 +5,48 @@ import os
 
 app = Flask(__name__)
 
+# Correct writable folder for Render
 DATA_FILE = "/opt/render/project/src/pm_data.csv"
 
-# Ensure CSV file exists with headers
+# Create the CSV with headers once
 if not os.path.exists(DATA_FILE):
     with open(DATA_FILE, "w", newline="") as f:
         writer = csv.writer(f)
         writer.writerow(["timestamp", "pm2.5", "pm10"])
 
 @app.route("/apm2", methods=["POST"])
-def receive_data():
+def receive():
     pm25 = request.form.get("pm2.5")
     pm10 = request.form.get("pm10")
-    timestamp = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    ts = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
 
+    # Append data to CSV
     with open(DATA_FILE, "a", newline="") as f:
         writer = csv.writer(f)
-        writer.writerow([timestamp, pm25, pm10])
+        writer.writerow([ts, pm25, pm10])
 
-    print(f"Received PM2.5={pm25} PM10={pm10}")
-    return "OK", 200
+    print("RECEIVED:", pm25, pm10)
+    return "OK"
 
 @app.route("/data")
-def show_data():
+def data():
     rows = []
     if os.path.exists(DATA_FILE):
         with open(DATA_FILE, newline="") as f:
-            reader = csv.reader(f)
-            rows = list(reader)
+            rows = list(csv.reader(f))
 
-    table_html = """
+    html = """
+    <h1>PM Sensor Data</h1>
     <table border="1" cellpadding="5">
-        <tr>
-            <th>Timestamp (UTC)</th>
-            <th>PM2.5</th>
-            <th>PM10</th>
-        </tr>
-        {% for row in rows[1:] %}
-        <tr>
-            <td>{{ row[0] }}</td>
-            <td>{{ row[1] }}</td>
-            <td>{{ row[2] }}</td>
-        </tr>
+        <tr><th>Timestamp</th><th>PM2.5</th><th>PM10</th></tr>
+        {% for r in rows[1:] %}
+            <tr><td>{{r[0]}}</td><td>{{r[1]}}</td><td>{{r[2]}}</td></tr>
         {% endfor %}
     </table>
     """
-    return render_template_string(table_html, rows=rows)
+    return render_template_string(html, rows=rows)
 
 @app.route("/")
 def home():
-    return "APM-2 Data Receiver is running!"
+    return "APM server running!"
+
