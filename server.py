@@ -7,7 +7,7 @@ app = Flask(__name__)
 
 # Writable directory on Render
 os.makedirs("/opt/render/project/.data", exist_ok=True)
-DATA_FILE = "/opt/render/project/.data/pm_data.csv"
+DATA_FILE = "/opt/render/project/src/pm_data.csv"
 
 # Create CSV if missing
 if not os.path.exists(DATA_FILE):
